@@ -103,3 +103,9 @@ dist
 
 # TernJS port file
 .tern-port
+
+# Medusa output directories
+crytic-export/
+corpus/
+cache/
+out/
