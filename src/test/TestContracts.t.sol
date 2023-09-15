@@ -8,9 +8,9 @@ import {LendingLedger} from "../LendingLedger.sol";
 contract VotingEscrowTest is VotingEscrow {
     constructor() VotingEscrow("VotingEscrow", "VE") {}
 
-    // function userVotingPowerDoesNotExceedTotalSupply() public {
-    //     assert(uint256(int256(locked[msg.sender].amount)) <= totalSupply());
-    // }
+    function userVotingPowerDoesNotExceedTotalSupply() public {
+        assert(uint256(int256(locked[msg.sender].amount)) <= totalSupply());
+    }
 
     function userBiasNeverLessThan0() public {
         uint256 uEpoch = userPointEpoch[msg.sender];
@@ -33,14 +33,27 @@ contract VotingEscrowTest is VotingEscrow {
 contract GaugeControllerTest is GaugeController {
     VotingEscrow ve;
     address _govervance;
+    address private _owner;
 
     constructor() GaugeController(address(ve), _govervance) {
         _govervance = msg.sender;
+        _owner = msg.sender;
         ve = new VotingEscrow("Voting Escrow", "VE");
     }
 
     function governanceAddressDoesNotChange() public {
-        assert(_govervance == address(0x30000));
+        assert(_govervance == address(_owner));
+    }
+
+    function userSlopeNeverLessThan0() public {
+        (
+            ,
+            /*int128 bias*/
+            int128 slope_ /*uint256 ts*/,
+
+        ) = ve.getLastUserPoint(msg.sender);
+
+        assert(slope_ >= 0);
     }
 }
 
