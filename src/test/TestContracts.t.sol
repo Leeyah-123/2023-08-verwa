@@ -8,8 +8,25 @@ import {LendingLedger} from "../LendingLedger.sol";
 contract VotingEscrowTest is VotingEscrow {
     constructor() VotingEscrow("VotingEscrow", "VE") {}
 
-    function lockAmountDoesNotExceedTotalSupply() public {
-        assert(uint256(int256(locked[msg.sender].delegated)) <= totalSupply());
+    // function userVotingPowerDoesNotExceedTotalSupply() public {
+    //     assert(uint256(int256(locked[msg.sender].amount)) <= totalSupply());
+    // }
+
+    function userBiasNeverLessThan0() public {
+        uint256 uEpoch = userPointEpoch[msg.sender];
+        assert(userPointHistory[msg.sender][uEpoch].bias >= 0);
+    }
+
+    function userSlopeNeverLessThan0() public {
+        uint256 uEpoch = userPointEpoch[msg.sender];
+        assert(userPointHistory[msg.sender][uEpoch].slope >= 0);
+    }
+
+    function lockTimeNeverGreaterThan5Years() public {
+        assert(
+            uint256(int256(locked[msg.sender].end)) <=
+                block.timestamp + LOCKTIME
+        );
     }
 }
 
@@ -20,6 +37,10 @@ contract GaugeControllerTest is GaugeController {
     constructor() GaugeController(address(ve), _govervance) {
         _govervance = msg.sender;
         ve = new VotingEscrow("Voting Escrow", "VE");
+    }
+
+    function governanceAddressDoesNotChange() public {
+        assert(_govervance == address(0x30000));
     }
 }
 
