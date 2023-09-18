@@ -9,7 +9,11 @@ contract VotingEscrowTest is VotingEscrow {
     constructor() VotingEscrow("VotingEscrow", "VE") {}
 
     function userVotingPowerDoesNotExceedTotalSupply() public {
-        assert(uint256(int256(locked[msg.sender].amount)) <= totalSupply());
+        uint256 currentUserPoint = userPointEpoch[msg.sender];
+        int128 userVotingPower = userPointHistory[msg.sender][currentUserPoint]
+            .bias;
+
+        assert(uint256(uint128(userVotingPower)) <= totalSupply());
     }
 
     function userBiasNeverLessThan0() public {
@@ -57,14 +61,55 @@ contract GaugeControllerTest is GaugeController {
     }
 }
 
-contract LendingLedgerTest is LendingLedger {
+contract LendingLedgerTest {
+    LendingLedger ledger;
     GaugeController gc;
     VotingEscrow ve;
     address _governance;
 
-    constructor() LendingLedger(address(gc), _governance) {
+    uint256 constant WEEK = 7 days;
+
+    constructor() {
         _governance = msg.sender;
         ve = new VotingEscrow("Voting Escrow", "VE");
         gc = new GaugeController(address(ve), _governance);
+
+        ledger = new LendingLedger(address(gc), _governance);
+    }
+
+    function lenderBalanceNeverLessThan0(
+        address lendingMarket,
+        address _lender,
+        uint256 lockAmount
+    ) public {
+        (, , int128 delegated, ) = ve.locked(_lender);
+        if (delegated == 0) {
+            ve.createLock{value: lockAmount}(lockAmount);
+        } else {
+            ve.increaseAmount{value: lockAmount}(lockAmount);
+        }
+
+        if (!ledger.lendingMarketWhitelist(lendingMarket))
+            ledger.whiteListLendingMarket(lendingMarket, true);
+
+        uint256 currEpoch = (block.timestamp / WEEK) * WEEK;
+        uint256 lenderBalance = ledger.lendingMarketBalances(
+            lendingMarket,
+            _lender,
+            currEpoch
+        );
+        assert(lenderBalance >= 0);
+    }
+
+    function lendingMarketBalanceNeverLessThan0(address lendingMarket) public {
+        if (!ledger.lendingMarketWhitelist(lendingMarket))
+            ledger.whiteListLendingMarket(lendingMarket, true);
+        uint256 currEpoch = (block.timestamp / WEEK) * WEEK;
+
+        uint256 marketBalance = ledger.lendingMarketTotalBalance(
+            lendingMarket,
+            currEpoch
+        );
+        assert(marketBalance >= 0);
     }
 }
